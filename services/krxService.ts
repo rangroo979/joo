@@ -44,8 +44,8 @@ const cache: {
 };
 
 // KRX API endpoints
-const KRX_KOSPI_URL = 'https://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd';
-const KRX_KOSDAQ_URL = 'https://data-dbg.krx.co.kr/svc/apis/sto/ksq_bydd_trd';
+export const KRX_KOSPI_URL = 'https://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd';
+export const KRX_KOSDAQ_URL = 'https://data-dbg.krx.co.kr/svc/apis/sto/ksq_bydd_trd';
 
 function mapRawToStock(raw: KrxRawStock, isDemo = false): Stock {
   const close = safeNumber(raw.TDD_CLSPRC);

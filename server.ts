@@ -11,6 +11,8 @@ import {
   formatKrxDateDisplay,
   findRecentBusinessDate,
   clearKrxCache,
+  getKospiDaily,
+  getKosdaqDaily,
 } from './services/krxService.ts';
 
 import {
@@ -102,15 +104,34 @@ async function startServer() {
     }
   });
 
-  // 2. KRX Stocks API
+  // 2. KRX Stocks API (KOSPI or integrated)
   app.get('/api/krx/stocks', async (req: Request, res: Response) => {
     try {
-      const targetDate = req.query.date as string | undefined;
+      const basDd = (req.query.basDd || req.query.date) as string | undefined;
       const forceRefresh = req.query.refresh === 'true';
-      const data = await getAllKoreanStocks(targetDate, forceRefresh);
+
+      // If specific basDd requested (8 digits)
+      if (basDd && basDd.trim().length === 8) {
+        const cleanDate = basDd.trim();
+        const kospiStocks = await getKospiDaily(cleanDate);
+        if (kospiStocks && kospiStocks.length > 0) {
+          return res.json({
+            date: formatKrxDateDisplay(cleanDate),
+            rawDate: cleanDate,
+            market: 'KOSPI',
+            isDemo: false,
+            count: kospiStocks.length,
+            stocks: kospiStocks,
+          });
+        }
+      }
+
+      // Default or fallback
+      const data = await getAllKoreanStocks(basDd, forceRefresh);
       res.json({
         date: formatKrxDateDisplay(data.date),
         rawDate: data.date,
+        market: 'KOSPI',
         isDemo: data.isDemo,
         count: data.totalCount,
         stocks: data.stocks,
@@ -118,6 +139,41 @@ async function startServer() {
     } catch (error) {
       console.error('Error in /api/krx/stocks:', error);
       res.status(500).json({ error: '국내 주식 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.' });
+    }
+  });
+
+  // 2-1. KRX KOSDAQ API
+  app.get('/api/krx/kosdaq', async (req: Request, res: Response) => {
+    try {
+      const basDd = (req.query.basDd || req.query.date) as string | undefined;
+
+      if (basDd && basDd.trim().length === 8) {
+        const cleanDate = basDd.trim();
+        const kosdaqStocks = await getKosdaqDaily(cleanDate);
+        if (kosdaqStocks && kosdaqStocks.length > 0) {
+          return res.json({
+            date: formatKrxDateDisplay(cleanDate),
+            rawDate: cleanDate,
+            market: 'KOSDAQ',
+            isDemo: false,
+            count: kosdaqStocks.length,
+            stocks: kosdaqStocks,
+          });
+        }
+      }
+
+      const recent = await findRecentBusinessDate();
+      res.json({
+        date: formatKrxDateDisplay(recent.date),
+        rawDate: recent.date,
+        market: 'KOSDAQ',
+        isDemo: recent.isDemo,
+        count: recent.kosdaqStocks.length,
+        stocks: recent.kosdaqStocks,
+      });
+    } catch (error) {
+      console.error('Error in /api/krx/kosdaq:', error);
+      res.status(500).json({ error: '코스닥 주식 데이터를 불러오지 못했습니다.' });
     }
   });
 

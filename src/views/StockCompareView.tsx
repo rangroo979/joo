@@ -39,8 +39,12 @@ export const StockCompareView: React.FC<StockCompareViewProps> = ({
   useEffect(() => {
     if (selectedStocks.length === 0) {
       Promise.all([
-        fetch('/api/krx/stocks/005930').then((r) => (r.ok ? r.json() : null)),
-        fetch('/api/krx/stocks/000660').then((r) => (r.ok ? r.json() : null)),
+        fetch('/api/krx/stocks/005930')
+          .then((r) => (r.ok ? r.json() : fetch('/api/krx/stocks?code=005930').then((r2) => (r2.ok ? r2.json() : null))))
+          .catch(() => null),
+        fetch('/api/krx/stocks/000660')
+          .then((r) => (r.ok ? r.json() : fetch('/api/krx/stocks?code=000660').then((r2) => (r2.ok ? r2.json() : null))))
+          .catch(() => null),
       ]).then(([s1, s2]) => {
         const defaults = [s1, s2].filter(Boolean);
         if (defaults.length > 0) setSelectedStocks(defaults);

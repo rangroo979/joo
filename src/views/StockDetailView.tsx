@@ -64,7 +64,10 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
     setError(null);
     setAiAnalysis(null);
     try {
-      const res = await fetch(`/api/krx/stocks/${encodeURIComponent(code)}`);
+      let res = await fetch(`/api/krx/stocks/${encodeURIComponent(code)}`);
+      if (!res.ok) {
+        res = await fetch(`/api/krx/stocks?code=${encodeURIComponent(code)}`);
+      }
       if (!res.ok) {
         throw new Error('해당 종목 데이터를 불러올 수 없습니다.');
       }

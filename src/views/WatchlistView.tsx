@@ -42,7 +42,9 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({
 
       try {
         const promises = watchlist.map((code) =>
-          fetch(`/api/krx/stocks/${encodeURIComponent(code)}`).then((r) => (r.ok ? r.json() : null))
+          fetch(`/api/krx/stocks/${encodeURIComponent(code)}`)
+            .then((r) => (r.ok ? r.json() : fetch(`/api/krx/stocks?code=${encodeURIComponent(code)}`).then((r2) => (r2.ok ? r2.json() : null))))
+            .catch(() => null)
         );
         const results = await Promise.all(promises);
         setStocks(results.filter((s): s is Stock => s !== null));

@@ -1,0 +1,22 @@
+{
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/api/krx/stocks/search",
+      "destination": "/api/krx/stocks"
+    },
+    {
+      "source": "/api/krx/stocks/:code",
+      "destination": "/api/krx/stocks?code=:code"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

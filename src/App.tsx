@@ -53,18 +53,42 @@ export default function App() {
   const fetchStatusAndData = async (forceRefresh = false) => {
     try {
       const refreshParam = forceRefresh ? '?refresh=true' : '';
+      let targetBasDd = '';
+
       const statusRes = await fetch(`/api/status${refreshParam}`);
       if (statusRes.ok) {
         const statusData: SystemStatus = await statusRes.json();
         setStatus(statusData);
+        if (statusData.rawDate && statusData.rawDate.trim().length === 8) {
+          targetBasDd = statusData.rawDate.trim();
+        }
       }
 
-      const stocksRes = await fetch(`/api/krx/stocks${refreshParam}`);
-      if (stocksRes.ok) {
-        const stocksData = await stocksRes.json();
-        if (stocksData.stocks && stocksData.stocks.length > 0) {
-          setFeaturedStocks(stocksData.stocks);
+      // Fetch both KOSPI and KOSDAQ using internal endpoints
+      const dateQuery = targetBasDd ? `?basDd=${targetBasDd}` : '';
+      const [kospiRes, kosdaqRes] = await Promise.all([
+        fetch(`/api/krx/stocks${dateQuery}`),
+        fetch(`/api/krx/kosdaq${dateQuery}`),
+      ]);
+
+      let combinedStocks: Stock[] = [];
+
+      if (kospiRes.ok) {
+        const kospiData = await kospiRes.json();
+        if (Array.isArray(kospiData.stocks) && kospiData.stocks.length > 0) {
+          combinedStocks = [...combinedStocks, ...kospiData.stocks];
         }
+      }
+
+      if (kosdaqRes.ok) {
+        const kosdaqData = await kosdaqRes.json();
+        if (Array.isArray(kosdaqData.stocks) && kosdaqData.stocks.length > 0) {
+          combinedStocks = [...combinedStocks, ...kosdaqData.stocks];
+        }
+      }
+
+      if (combinedStocks.length > 0) {
+        setFeaturedStocks(combinedStocks);
       }
 
       const indicesRes = await fetch('/api/market/indices');

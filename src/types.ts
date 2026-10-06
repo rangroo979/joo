@@ -125,6 +125,7 @@ export interface SystemStatus {
   kospiStocksLoaded: number;
   kosdaqStocksLoaded: number;
   latestBusinessDate: string;
+  rawDate?: string;
   isDemoFallback: boolean;
   geminiConnected: boolean;
 }
