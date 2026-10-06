@@ -70,9 +70,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span>국내 종목: <strong>KRX 최근 거래일 데이터</strong> ({latestBusinessDate} 기준)</span>
             </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-700/60 text-slate-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span>국내 지수: <strong>KRX 최근 거래일 지수</strong> (KOSPI/KOSDAQ)</span>
+            </div>
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-700/60 text-slate-400">
               <span className="w-2 h-2 rounded-full bg-amber-400" />
-              <span>시장지수 및 해외: <strong>DEMO 시뮬레이션</strong></span>
+              <span>해외 지수: <strong>DEMO</strong> (S&P 500 / NASDAQ)</span>
             </div>
           </div>
         </div>
@@ -88,7 +92,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <Activity className="w-5 h-5 text-blue-400" />
             <h2 className="text-lg font-bold text-slate-100">주요 시장 지수</h2>
             <span className="text-xs text-slate-400 font-normal ml-1">
-              (국내·해외 지수 API 미연결: DEMO)
+              (국내: KRX 거래일 지수 / 해외: DEMO)
             </span>
           </div>
           <button
@@ -103,6 +107,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
           {indices.map((idx) => {
             const isPos = idx.change >= 0;
             const changeInfo = formatChange(idx.change, idx.changeRate, idx.market === 'US' ? 'US' : 'KOSPI');
+            const isKrxIndex = !idx.isDemo && (idx.code === 'KOSPI' || idx.code === 'KOSDAQ');
+            const indexDate = idx.date || latestBusinessDate;
 
             return (
               <div
@@ -119,7 +125,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                       {idx.code}
                     </span>
                   </div>
-                  <StockBadge isDemo={true} size="sm" />
+                  <StockBadge isDemo={idx.isDemo} market={idx.code} size="sm" />
                 </div>
 
                 <div className="flex items-baseline justify-between mt-2">
@@ -130,6 +136,20 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     {isPos ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                     <span>{changeInfo.rateText}</span>
                   </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1.5 font-medium">
+                  <span>전일 대비</span>
+                  <span className={`font-mono font-semibold ${changeInfo.colorClass}`}>
+                    {changeInfo.diffText}
+                  </span>
+                </div>
+
+                <div className="text-[10px] text-slate-500 mt-1 flex items-center justify-between">
+                  <span>
+                    {isKrxIndex ? 'KRX 최근 거래일 지수' : '시뮬레이션 DEMO'}
+                  </span>
+                  <span>{indexDate} 거래일 기준</span>
                 </div>
 
                 <div className="mt-3 pt-2 border-t border-slate-800/60">

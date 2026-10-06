@@ -114,14 +114,44 @@ export const SettingsTermsView: React.FC<SettingsTermsViewProps> = ({
                 </div>
               </div>
 
-              {/* KRX 연결: 정상 / 오류 */}
+              {/* 최근 거래일: YYYY.MM.DD */}
               <div className="p-4 bg-slate-900/60 rounded-2xl border border-slate-800 flex items-center justify-between">
                 <div>
-                  <span className="font-semibold text-slate-200 block text-sm">KRX 연결</span>
-                  <span className="text-[11px] text-slate-400">한국거래소 OPEN API 통신</span>
+                  <span className="font-semibold text-slate-200 block text-sm">최근 거래일</span>
+                  <span className="text-[11px] text-slate-400">데이터 기준 영업일</span>
+                </div>
+                <div className="font-mono font-bold text-blue-400 text-sm">
+                  {status?.latestBusinessDate || '2026.09.28'}
+                </div>
+              </div>
+
+              {/* KRX 국내 종목: 정상 / 오류 */}
+              <div className="p-4 bg-slate-900/60 rounded-2xl border border-slate-800 flex items-center justify-between">
+                <div>
+                  <span className="font-semibold text-slate-200 block text-sm">KRX 국내 종목</span>
+                  <span className="text-[11px] text-slate-400">유가증권 & 코스닥 일별매매 데이터</span>
                 </div>
                 <div>
-                  {status?.krxConnected ? (
+                  {(status?.krxStockStatus === '정상' || (status?.krxConnected && ((status?.kospiStocksLoaded || 0) + (status?.kosdaqStocksLoaded || 0) > 0))) ? (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/30">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> 정상 ({((status?.kospiStocksLoaded || 0) + (status?.kosdaqStocksLoaded || 0)).toLocaleString()}개)
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-500/15 text-rose-400 font-semibold border border-rose-500/30">
+                      <AlertTriangle className="w-3.5 h-3.5" /> 오류
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* KRX KOSPI 지수: 정상 / 오류 */}
+              <div className="p-4 bg-slate-900/60 rounded-2xl border border-slate-800 flex items-center justify-between">
+                <div>
+                  <span className="font-semibold text-slate-200 block text-sm">KRX KOSPI 지수</span>
+                  <span className="text-[11px] text-slate-400">KOSPI 시리즈 일별시세정보 API</span>
+                </div>
+                <div>
+                  {(status?.krxKospiIndexStatus === '정상' || (status?.krxConnected && !status?.isDemoFallback)) ? (
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/30">
                       <CheckCircle2 className="w-3.5 h-3.5" /> 정상
                     </span>
@@ -133,52 +163,22 @@ export const SettingsTermsView: React.FC<SettingsTermsViewProps> = ({
                 </div>
               </div>
 
-              {/* KOSPI: 정상 / 오류 */}
+              {/* KRX KOSDAQ 지수: 정상 / 오류 */}
               <div className="p-4 bg-slate-900/60 rounded-2xl border border-slate-800 flex items-center justify-between">
                 <div>
-                  <span className="font-semibold text-slate-200 block text-sm">KOSPI</span>
-                  <span className="text-[11px] text-slate-400">유가증권 일별매매 데이터</span>
+                  <span className="font-semibold text-slate-200 block text-sm">KRX KOSDAQ 지수</span>
+                  <span className="text-[11px] text-slate-400">KOSDAQ 시리즈 일별시세정보 API</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  {status?.krxConnected && (status.kospiStocksLoaded > 0) ? (
+                <div>
+                  {status?.krxKosdaqIndexStatus === '정상' ? (
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/30">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> 정상 ({status.kospiStocksLoaded}개)
+                      <CheckCircle2 className="w-3.5 h-3.5" /> 정상
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-500/15 text-rose-400 font-semibold border border-rose-500/30">
-                      <AlertTriangle className="w-3.5 h-3.5" /> 오류
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/15 text-amber-400 font-semibold border border-amber-500/30">
+                      <AlertTriangle className="w-3.5 h-3.5" /> DEMO Fallback
                     </span>
                   )}
-                </div>
-              </div>
-
-              {/* KOSDAQ: 정상 / 오류 */}
-              <div className="p-4 bg-slate-900/60 rounded-2xl border border-slate-800 flex items-center justify-between">
-                <div>
-                  <span className="font-semibold text-slate-200 block text-sm">KOSDAQ</span>
-                  <span className="text-[11px] text-slate-400">코스닥 일별매매 데이터</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {status?.krxConnected && (status.kosdaqStocksLoaded > 0) ? (
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/30">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> 정상 ({status.kosdaqStocksLoaded}개)
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-500/15 text-rose-400 font-semibold border border-rose-500/30">
-                      <AlertTriangle className="w-3.5 h-3.5" /> 오류
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* 최근 거래일: YYYY.MM.DD */}
-              <div className="p-4 bg-slate-900/60 rounded-2xl border border-slate-800 flex items-center justify-between">
-                <div>
-                  <span className="font-semibold text-slate-200 block text-sm">최근 거래일</span>
-                  <span className="text-[11px] text-slate-400">데이터 기준 영업일</span>
-                </div>
-                <div className="font-mono font-bold text-blue-400 text-sm">
-                  {status?.latestBusinessDate || '2026.09.28'}
                 </div>
               </div>
 
@@ -201,11 +201,11 @@ export const SettingsTermsView: React.FC<SettingsTermsViewProps> = ({
                 </div>
               </div>
 
-              {/* 국내 시장지수 */}
+              {/* 해외 시장지수 및 미국주식: DEMO */}
               <div className="p-4 bg-slate-900/60 rounded-2xl border border-slate-800 flex items-center justify-between">
                 <div>
-                  <span className="font-semibold text-slate-200 block text-sm">국내 시장지수 (KOSPI/KOSDAQ)</span>
-                  <span className="text-[11px] text-slate-400">지수 스트리밍 API 미연결</span>
+                  <span className="font-semibold text-slate-200 block text-sm">해외 시장지수 (S&P 500 / NASDAQ)</span>
+                  <span className="text-[11px] text-slate-400">해외 실시간 API 미제공: DEMO 유지</span>
                 </div>
                 <div>
                   <span className="px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-400 font-semibold border border-amber-500/30">

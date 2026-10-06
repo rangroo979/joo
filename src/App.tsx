@@ -91,10 +91,38 @@ export default function App() {
         setFeaturedStocks(combinedStocks);
       }
 
-      const indicesRes = await fetch('/api/market/indices');
-      if (indicesRes.ok) {
-        const indicesData = await indicesRes.json();
-        setIndices(indicesData);
+      // Fetch Market Indices: Call /api/krx/index/kospi and /api/krx/index/kosdaq
+      const [kospiIdxRes, kosdaqIdxRes] = await Promise.all([
+        fetch(`/api/krx/index/kospi${dateQuery}`).catch(() => null),
+        fetch(`/api/krx/index/kosdaq${dateQuery}`).catch(() => null),
+      ]);
+
+      let loadedKospi: MarketIndex | null = null;
+      let loadedKosdaq: MarketIndex | null = null;
+      if (kospiIdxRes && kospiIdxRes.ok) {
+        loadedKospi = await kospiIdxRes.json();
+      }
+      if (kosdaqIdxRes && kosdaqIdxRes.ok) {
+        loadedKosdaq = await kosdaqIdxRes.json();
+      }
+
+      const indicesRes = await fetch(`/api/market/indices${dateQuery}`).catch(() => null);
+      if (indicesRes && indicesRes.ok) {
+        const indicesData: MarketIndex[] = await indicesRes.json();
+        const updated = indicesData.map((idx) => {
+          if (idx.code === 'KOSPI' && loadedKospi) return { ...idx, ...loadedKospi };
+          if (idx.code === 'KOSDAQ' && loadedKosdaq) return { ...idx, ...loadedKosdaq };
+          return idx;
+        });
+        setIndices(updated);
+      } else {
+        setIndices((prev) =>
+          prev.map((idx) => {
+            if (idx.code === 'KOSPI' && loadedKospi) return { ...idx, ...loadedKospi };
+            if (idx.code === 'KOSDAQ' && loadedKosdaq) return { ...idx, ...loadedKosdaq };
+            return idx;
+          })
+        );
       }
 
       const usRes = await fetch('/api/market/us-stocks');

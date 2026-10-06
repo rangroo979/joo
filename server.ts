@@ -55,13 +55,26 @@ async function startServer() {
 
       const recent = await findRecentBusinessDate();
 
+      const { fetchKospiIndexData } = await import('./api/krx/index/kospi.ts');
+      const { fetchKosdaqIndexData } = await import('./api/krx/index/kosdaq.ts');
+      const [kospiIdx, kosdaqIdx] = await Promise.all([
+        fetchKospiIndexData(recent.date),
+        fetchKosdaqIndexData(recent.date),
+      ]);
+
       const krxConnected = !recent.isDemo && (recent.kospiStocks.length > 0 || recent.kosdaqStocks.length > 0);
+      const krxStockStatus = krxConnected ? '정상' : (krxConfigured ? '오류' : '미등록');
+      const krxKospiIndexStatus = !kospiIdx.isDemo ? '정상' : (krxConfigured ? '오류' : '미등록');
+      const krxKosdaqIndexStatus = !kosdaqIdx.isDemo ? '정상' : (krxConfigured ? '오류' : '미등록');
       const kospiStatus = recent.kospiStocks.length > 0 && !recent.isDemo ? '정상' : (krxConfigured ? '오류' : '미등록');
       const kosdaqStatus = recent.kosdaqStocks.length > 0 && !recent.isDemo ? '정상' : (krxConfigured ? '오류' : '미등록');
 
       res.json({
         krxConfigured,
         krxConnected,
+        krxStockStatus,
+        krxKospiIndexStatus,
+        krxKosdaqIndexStatus,
         kospiStatus,
         kosdaqStatus,
         kospiStocksLoaded: recent.kospiStocks.length,
@@ -215,9 +228,47 @@ async function startServer() {
     }
   });
 
-  // 5. Market Indices (DEMO)
-  app.get('/api/market/indices', (_req: Request, res: Response) => {
-    res.json(DEMO_MARKET_INDICES);
+  // 4-1. KRX KOSPI Index API
+  app.get('/api/krx/index/kospi', async (req: Request, res: Response) => {
+    try {
+      const basDd = (req.query.basDd || req.query.date) as string | undefined;
+      const { fetchKospiIndexData } = await import('./api/krx/index/kospi.ts');
+      const result = await fetchKospiIndexData(basDd);
+      res.json(result.data);
+    } catch (error) {
+      console.error('Error in /api/krx/index/kospi:', error);
+      res.json(DEMO_MARKET_INDICES.find((i) => i.code === 'KOSPI'));
+    }
+  });
+
+  // 4-2. KRX KOSDAQ Index API
+  app.get('/api/krx/index/kosdaq', async (req: Request, res: Response) => {
+    try {
+      const basDd = (req.query.basDd || req.query.date) as string | undefined;
+      const { fetchKosdaqIndexData } = await import('./api/krx/index/kosdaq.ts');
+      const result = await fetchKosdaqIndexData(basDd);
+      res.json(result.data);
+    } catch (error) {
+      console.error('Error in /api/krx/index/kosdaq:', error);
+      res.json(DEMO_MARKET_INDICES.find((i) => i.code === 'KOSDAQ'));
+    }
+  });
+
+  // 5. Market Indices (Integrated KRX + US DEMO)
+  app.get('/api/market/indices', async (req: Request, res: Response) => {
+    try {
+      const basDd = (req.query.basDd || req.query.date) as string | undefined;
+      const { fetchKospiIndexData } = await import('./api/krx/index/kospi.ts');
+      const { fetchKosdaqIndexData } = await import('./api/krx/index/kosdaq.ts');
+      const [kospiRes, kosdaqRes] = await Promise.all([
+        fetchKospiIndexData(basDd),
+        fetchKosdaqIndexData(basDd),
+      ]);
+      const usIndices = DEMO_MARKET_INDICES.filter((i) => i.code === 'SP500' || i.code === 'NASDAQ');
+      res.json([kospiRes.data, kosdaqRes.data, ...usIndices]);
+    } catch (error) {
+      res.json(DEMO_MARKET_INDICES);
+    }
   });
 
   // 6. US Stocks (DEMO)

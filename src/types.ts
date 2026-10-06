@@ -60,6 +60,8 @@ export interface MarketIndex {
   changeRate: number;
   isDemo: boolean;
   history: number[];
+  date?: string;
+  rawDate?: string;
 }
 
 export interface AIAnalysisMetric {
@@ -120,6 +122,9 @@ export interface TermDefinition {
 export interface SystemStatus {
   krxConfigured: boolean;
   krxConnected: boolean;
+  krxStockStatus?: '정상' | '오류' | '미등록' | string;
+  krxKospiIndexStatus?: '정상' | '오류' | '미등록' | string;
+  krxKosdaqIndexStatus?: '정상' | '오류' | '미등록' | string;
   kospiStatus?: '정상' | '오류' | string;
   kosdaqStatus?: '정상' | '오류' | string;
   kospiStocksLoaded: number;

@@ -5,6 +5,8 @@ import {
   formatKrxDateDisplay,
   clearKrxCache,
 } from '../services/krxService.ts';
+import { fetchKospiIndexData } from './krx/index/kospi.ts';
+import { fetchKosdaqIndexData } from './krx/index/kosdaq.ts';
 
 dotenv.config();
 
@@ -30,15 +32,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const recent = await findRecentBusinessDate();
 
+    // Check index data
+    const [kospiIdx, kosdaqIdx] = await Promise.all([
+      fetchKospiIndexData(recent.date),
+      fetchKosdaqIndexData(recent.date),
+    ]);
+
     const krxConnected = !recent.isDemo && (recent.kospiStocks.length > 0 || recent.kosdaqStocks.length > 0);
-    const kospiStatus = recent.kospiStocks.length > 0 && !recent.isDemo ? '정상' : (krxConfigured ? '오류' : '미등록');
-    const kosdaqStatus = recent.kosdaqStocks.length > 0 && !recent.isDemo ? '정상' : (krxConfigured ? '오류' : '미등록');
+    const krxStockStatus = krxConnected ? '정상' : (krxConfigured ? '오류' : '미등록');
+    const krxKospiIndexStatus = !kospiIdx.isDemo ? '정상' : (krxConfigured ? '오류' : '미등록');
+    const krxKosdaqIndexStatus = !kosdaqIdx.isDemo ? '정상' : (krxConfigured ? '오류' : '미등록');
 
     return res.status(200).json({
       krxConfigured,
       krxConnected,
-      kospiStatus,
-      kosdaqStatus,
+      krxStockStatus,
+      krxKospiIndexStatus,
+      krxKosdaqIndexStatus,
+      kospiStatus: recent.kospiStocks.length > 0 && !recent.isDemo ? '정상' : (krxConfigured ? '오류' : '미등록'),
+      kosdaqStatus: recent.kosdaqStocks.length > 0 && !recent.isDemo ? '정상' : (krxConfigured ? '오류' : '미등록'),
       kospiStocksLoaded: recent.kospiStocks.length,
       kosdaqStocksLoaded: recent.kosdaqStocks.length,
       latestBusinessDate: formatKrxDateDisplay(recent.date),
@@ -50,6 +62,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({
       krxConfigured: false,
       krxConnected: false,
+      krxStockStatus: '오류',
+      krxKospiIndexStatus: '오류',
+      krxKosdaqIndexStatus: '오류',
       kospiStatus: '오류',
       kosdaqStatus: '오류',
       kospiStocksLoaded: 0,

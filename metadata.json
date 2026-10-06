@@ -2,5 +2,7 @@
   "name": "AI 투자 분석·의사결정 지원 웹앱",
   "description": "한국거래소(KRX) 데이터와 Gemini AI를 활용하여 객관적인 투자 판단 근거와 기업·시장 분석을 제공하는 풀스택 금융 웹앱",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

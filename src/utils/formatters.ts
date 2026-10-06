@@ -44,6 +44,7 @@ export function formatPrice(price: number, market = 'KOSPI'): string {
 
 export function formatChange(change: number, changeRate: number, market = 'KOSPI'): {
   text: string;
+  diffText: string;
   rateText: string;
   colorClass: string;
   bgClass: string;
@@ -55,9 +56,14 @@ export function formatChange(change: number, changeRate: number, market = 'KOSPI
 
   const sign = isPos ? '+' : '';
   const pricePrefix = market === 'US' ? '$' : '';
-  const priceSuffix = market === 'US' ? '' : '원';
+  const priceSuffix = market === 'US' ? '' : (market === 'INDEX' || market === 'KR' ? 'pt' : '원');
 
-  const text = `${sign}${change.toLocaleString('ko-KR')}${priceSuffix}`;
+  const formattedNum = change.toLocaleString('ko-KR', {
+    minimumFractionDigits: (market === 'US' || market === 'INDEX' || market === 'KR') ? 2 : 0,
+    maximumFractionDigits: 2,
+  });
+  const text = `${pricePrefix}${sign}${formattedNum}${priceSuffix}`;
+  const diffText = `${sign}${formattedNum}`;
   const rateText = `${sign}${changeRate.toFixed(2)}%`;
 
   // Korean Stock Market Convention: UP is RED, DOWN is BLUE
@@ -73,7 +79,8 @@ export function formatChange(change: number, changeRate: number, market = 'KOSPI
   }
 
   return {
-    text: `${pricePrefix}${text}`,
+    text,
+    diffText,
     rateText,
     colorClass,
     bgClass,

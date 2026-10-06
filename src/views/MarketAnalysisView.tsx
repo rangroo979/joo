@@ -94,7 +94,7 @@ export const MarketAnalysisView: React.FC<MarketAnalysisViewProps> = ({ indices 
                   <h3 className="font-bold text-sm text-slate-100">{idx.name}</h3>
                   <span className="text-xs font-mono text-slate-400">{idx.code}</span>
                 </div>
-                <StockBadge isDemo={true} size="sm" />
+                <StockBadge isDemo={idx.isDemo} market={idx.code} size="sm" />
               </div>
 
               <div className="flex items-baseline justify-between">
@@ -105,6 +105,18 @@ export const MarketAnalysisView: React.FC<MarketAnalysisViewProps> = ({ indices 
                   {isPos ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                   <span>{changeInfo.rateText}</span>
                 </span>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
+                <span>전일 대비</span>
+                <span className={`font-mono font-semibold ${changeInfo.colorClass}`}>
+                  {changeInfo.diffText}
+                </span>
+              </div>
+
+              <div className="text-[10px] text-slate-500 flex items-center justify-between">
+                <span>{!idx.isDemo && (idx.code === 'KOSPI' || idx.code === 'KOSDAQ') ? 'KRX 최근 거래일 지수' : '시뮬레이션 DEMO'}</span>
+                <span>{idx.date || '2026.09.28'} 거래일 기준</span>
               </div>
 
               <div className="pt-2 border-t border-slate-800/80">
