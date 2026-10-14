@@ -1,5 +1,6 @@
 {
-  "buildCommand": "vite build",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
     {
@@ -11,11 +12,7 @@
       "destination": "/api/krx/stocks?code=:code"
     },
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    },
-    {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]
