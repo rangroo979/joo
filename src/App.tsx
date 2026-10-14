@@ -91,38 +91,23 @@ export default function App() {
         setFeaturedStocks(combinedStocks);
       }
 
-      // Fetch Market Indices: Call /api/krx/index/kospi and /api/krx/index/kosdaq
-      const [kospiIdxRes, kosdaqIdxRes] = await Promise.all([
-        fetch(`/api/krx/index/kospi${dateQuery}`).catch(() => null),
-        fetch(`/api/krx/index/kosdaq${dateQuery}`).catch(() => null),
-      ]);
-
-      let loadedKospi: MarketIndex | null = null;
-      let loadedKosdaq: MarketIndex | null = null;
-      if (kospiIdxRes && kospiIdxRes.ok) {
-        loadedKospi = await kospiIdxRes.json();
-      }
-      if (kosdaqIdxRes && kosdaqIdxRes.ok) {
-        loadedKosdaq = await kosdaqIdxRes.json();
-      }
-
+      // Fetch Market Indices via single consolidated endpoint /api/market/indices
       const indicesRes = await fetch(`/api/market/indices${dateQuery}`).catch(() => null);
       if (indicesRes && indicesRes.ok) {
-        const indicesData: MarketIndex[] = await indicesRes.json();
-        const updated = indicesData.map((idx) => {
-          if (idx.code === 'KOSPI' && loadedKospi) return { ...idx, ...loadedKospi };
-          if (idx.code === 'KOSDAQ' && loadedKosdaq) return { ...idx, ...loadedKosdaq };
-          return idx;
-        });
-        setIndices(updated);
-      } else {
-        setIndices((prev) =>
-          prev.map((idx) => {
-            if (idx.code === 'KOSPI' && loadedKospi) return { ...idx, ...loadedKospi };
-            if (idx.code === 'KOSDAQ' && loadedKosdaq) return { ...idx, ...loadedKosdaq };
-            return idx;
-          })
-        );
+        const json = await indicesRes.json();
+        if (Array.isArray(json)) {
+          setIndices(json);
+        } else if (Array.isArray(json?.indices)) {
+          setIndices(json.indices);
+        } else if (json?.kospi && json?.kosdaq) {
+          const list: MarketIndex[] = [
+            json.kospi,
+            json.kosdaq,
+            json.sp500 || { code: 'SP500', name: 'S&P 500', market: 'US', value: 5738.17, change: -7.65, changeRate: -0.13, source: 'DEMO', isDemo: true, history: [] },
+            json.nasdaq || { code: 'NASDAQ', name: '나스닥', market: 'US', value: 18119.59, change: 70.32, changeRate: 0.39, source: 'DEMO', isDemo: true, history: [] },
+          ];
+          setIndices(list);
+        }
       }
 
       const usRes = await fetch('/api/market/us-stocks');

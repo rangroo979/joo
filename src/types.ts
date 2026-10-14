@@ -59,6 +59,7 @@ export interface MarketIndex {
   change: number;
   changeRate: number;
   isDemo: boolean;
+  source?: 'KRX' | 'DEMO' | string;
   history: number[];
   date?: string;
   rawDate?: string;

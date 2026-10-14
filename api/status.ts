@@ -5,8 +5,7 @@ import {
   formatKrxDateDisplay,
   clearKrxCache,
 } from '../services/krxService.ts';
-import { fetchKospiIndexData } from './krx/index/kospi.ts';
-import { fetchKosdaqIndexData } from './krx/index/kosdaq.ts';
+import { fetchKospiIndexData, fetchKosdaqIndexData } from './market/indices.ts';
 
 dotenv.config();
 

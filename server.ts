@@ -55,8 +55,7 @@ async function startServer() {
 
       const recent = await findRecentBusinessDate();
 
-      const { fetchKospiIndexData } = await import('./api/krx/index/kospi.ts');
-      const { fetchKosdaqIndexData } = await import('./api/krx/index/kosdaq.ts');
+      const { fetchKospiIndexData, fetchKosdaqIndexData } = await import('./api/market/indices.ts');
       const [kospiIdx, kosdaqIdx] = await Promise.all([
         fetchKospiIndexData(recent.date),
         fetchKosdaqIndexData(recent.date),
@@ -228,11 +227,11 @@ async function startServer() {
     }
   });
 
-  // 4-1. KRX KOSPI Index API
+  // 4-1. KRX KOSPI Index (Forwarded to indices fetcher)
   app.get('/api/krx/index/kospi', async (req: Request, res: Response) => {
     try {
       const basDd = (req.query.basDd || req.query.date) as string | undefined;
-      const { fetchKospiIndexData } = await import('./api/krx/index/kospi.ts');
+      const { fetchKospiIndexData } = await import('./api/market/indices.ts');
       const result = await fetchKospiIndexData(basDd);
       res.json(result.data);
     } catch (error) {
@@ -241,11 +240,11 @@ async function startServer() {
     }
   });
 
-  // 4-2. KRX KOSDAQ Index API
+  // 4-2. KRX KOSDAQ Index (Forwarded to indices fetcher)
   app.get('/api/krx/index/kosdaq', async (req: Request, res: Response) => {
     try {
       const basDd = (req.query.basDd || req.query.date) as string | undefined;
-      const { fetchKosdaqIndexData } = await import('./api/krx/index/kosdaq.ts');
+      const { fetchKosdaqIndexData } = await import('./api/market/indices.ts');
       const result = await fetchKosdaqIndexData(basDd);
       res.json(result.data);
     } catch (error) {
@@ -254,18 +253,12 @@ async function startServer() {
     }
   });
 
-  // 5. Market Indices (Integrated KRX + US DEMO)
+  // 5. Market Indices (Integrated KRX + US DEMO via ./api/market/indices.ts)
   app.get('/api/market/indices', async (req: Request, res: Response) => {
     try {
-      const basDd = (req.query.basDd || req.query.date) as string | undefined;
-      const { fetchKospiIndexData } = await import('./api/krx/index/kospi.ts');
-      const { fetchKosdaqIndexData } = await import('./api/krx/index/kosdaq.ts');
-      const [kospiRes, kosdaqRes] = await Promise.all([
-        fetchKospiIndexData(basDd),
-        fetchKosdaqIndexData(basDd),
-      ]);
-      const usIndices = DEMO_MARKET_INDICES.filter((i) => i.code === 'SP500' || i.code === 'NASDAQ');
-      res.json([kospiRes.data, kosdaqRes.data, ...usIndices]);
+      const { default: handler } = await import('./api/market/indices.ts');
+      // Execute the serverless function handler directly
+      await handler(req as any, res as any);
     } catch (error) {
       res.json(DEMO_MARKET_INDICES);
     }

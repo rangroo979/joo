@@ -72,9 +72,9 @@ export const MarketAnalysisView: React.FC<MarketAnalysisViewProps> = ({ indices 
 
       {/* Notice Banner */}
       <div className="p-3.5 bg-slate-900/80 border border-slate-800 rounded-2xl flex items-center gap-2.5 text-xs text-slate-300">
-        <Activity className="w-4 h-4 text-amber-400 shrink-0" />
+        <Activity className="w-4 h-4 text-emerald-400 shrink-0" />
         <span>
-          <strong>지수 데이터 안내:</strong> 현재 실제 KRX 지수 및 해외 지수 스트리밍 API가 연결되지 않은 상태로, 전 지수 <strong>DEMO 시뮬레이션</strong>으로 표시됩니다.
+          <strong>지수 데이터 안내:</strong> 국내 KOSPI·KOSDAQ 지수는 <strong>KRX 최근 거래일 데이터</strong> 기준이며, S&P 500·NASDAQ은 <strong>DEMO 시뮬레이션</strong> 데이터입니다.
         </span>
       </div>
 
