@@ -185,123 +185,164 @@ export async function fetchKospiIndexData(targetDate?: string): Promise<{ data: 
   return { data: DEFAULT_DEMO_KOSPI, isDemo: true };
 }
 
+// Helper function to extract array rows from varied KRX response wrappers
+function extractKrxRows(json: any): any[] {
+  if (!json) return [];
+  if (Array.isArray(json.OutBlock_1)) return json.OutBlock_1;
+  if (Array.isArray(json.outBlock_1)) return json.outBlock_1;
+  if (Array.isArray(json.output)) return json.output;
+  if (Array.isArray(json.Output)) return json.Output;
+  if (Array.isArray(json.OutBlock)) return json.OutBlock;
+  if (Array.isArray(json.block1)) return json.block1;
+  if (Array.isArray(json)) return json;
+  return [];
+}
+
+// Helper to identify the representative KOSDAQ index row from KRX series according to priority:
+// 1) IDX_NM === "코스닥"
+// 2) IDX_NM.trim() === "코스닥"
+// 3) IDX_NM.includes("코스닥") && !IDX_NM.includes("150") && !IDX_NM.includes("레버리지") && !IDX_NM.includes("인버스")
+// 4) 위 조건에 맞지 않으면 OutBlock_1 중 CLSPRC_IDX가 0보다 큰 첫 번째 항목
+function selectKosdaqRepresentative(rows: any[]): any | null {
+  if (!rows || rows.length === 0) return null;
+
+  // 1. IDX_NM === "코스닥"
+  let item = rows.find((r: any) => r.IDX_NM === '코스닥');
+  if (item) return item;
+
+  // 2. IDX_NM.trim() === "코스닥"
+  item = rows.find((r: any) => typeof r.IDX_NM === 'string' && r.IDX_NM.trim() === '코스닥');
+  if (item) return item;
+
+  // 3. IDX_NM.includes("코스닥") && !IDX_NM.includes("150") && !IDX_NM.includes("레버리지") && !IDX_NM.includes("인버스")
+  item = rows.find((r: any) => {
+    const nm = typeof r.IDX_NM === 'string' ? r.IDX_NM : '';
+    return nm.includes('코스닥') && !nm.includes('150') && !nm.includes('레버리지') && !nm.includes('인버스');
+  });
+  if (item) return item;
+
+  // 4. CLSPRC_IDX > 0 in OutBlock_1
+  item = rows.find((r: any) => safeNumber(r.CLSPRC_IDX) > 0);
+  if (item) return item;
+
+  return rows[0] || null;
+}
+
 export async function fetchKosdaqIndexData(targetDate?: string): Promise<{ data: any; isDemo: boolean }> {
-  const apiKey = process.env.KRX_API_KEY?.trim();
+  const apiKey = (process.env.KRX_API_KEY || '').replace(/^["']|["']$/g, '').trim();
   if (!apiKey) {
-    return { data: DEFAULT_DEMO_KOSDAQ, isDemo: true };
+    console.warn('[KOSDAQ Index] KRX_API_KEY is not configured. Falling back to DEMO.');
+    return { data: { ...DEFAULT_DEMO_KOSDAQ, source: 'DEMO', isDemo: true }, isDemo: true };
   }
 
-  // 1. If specific date provided
+  const candidates: string[] = [];
   if (targetDate && targetDate.replace(/\D/g, '').length === 8) {
-    const cleanDate = targetDate.replace(/\D/g, '');
-    if (kosdaqCache[cleanDate] && Date.now() - kosdaqCache[cleanDate].timestamp < 10 * 60 * 1000) {
-      return { data: kosdaqCache[cleanDate].data, isDemo: false };
-    }
-
-    try {
-      const res = await fetch(`${KRX_KOSDAQ_INDEX_URL}?basDd=${cleanDate}`, {
-        headers: { AUTH_KEY: apiKey, Accept: 'application/json' },
-      });
-      if (res.ok) {
-        const json: any = await res.json();
-        if (json && Array.isArray(json.OutBlock_1) && json.OutBlock_1.length > 0) {
-          const item =
-            json.OutBlock_1.find((i: any) => i.IDX_NM === '코스닥') ||
-            json.OutBlock_1.find((i: any) => i.IDX_NM?.trim() === '코스닥') ||
-            json.OutBlock_1.find((i: any) => i.IDX_NM?.includes('코스닥') && !i.IDX_NM?.includes('150')) ||
-            json.OutBlock_1[0];
-
-          const closeVal = safeNumber(item.CLSPRC_IDX);
-          if (closeVal > 0) {
-            const openVal = safeNumber(item.OPNPRC_IDX) || closeVal;
-            const highVal = safeNumber(item.HGPRC_IDX) || closeVal;
-            const lowVal = safeNumber(item.LWPRC_IDX) || closeVal;
-            const changeVal = safeNumber(item.CMPPREVDD_IDX);
-            let rateVal = safeNumber(item.FLUC_RT);
-            if (changeVal < 0 && rateVal > 0) rateVal = -rateVal;
-
-            const parsed = {
-              code: 'KOSDAQ',
-              name: '코스닥',
-              market: 'KR',
-              value: closeVal,
-              change: changeVal,
-              changeRate: rateVal,
-              open: openVal,
-              high: highVal,
-              low: lowVal,
-              date: formatKrxDateDisplay(item.BAS_DD || cleanDate),
-              rawDate: item.BAS_DD || cleanDate,
-              source: 'KRX',
-              isDemo: false,
-              history: [openVal, lowVal, highVal, closeVal],
-            };
-            kosdaqCache[cleanDate] = { date: cleanDate, data: parsed, timestamp: Date.now() };
-            return { data: parsed, isDemo: false };
-          }
-        }
-      }
-    } catch {
-      // Fall through to auto-detect
+    candidates.push(targetDate.replace(/\D/g, ''));
+  }
+  for (let i = 0; i < 10; i++) {
+    const candidate = getKstDate(i);
+    if (!candidates.includes(candidate)) {
+      candidates.push(candidate);
     }
   }
 
-  // 2. Auto-detect recent business date (up to 7 days back)
-  for (let i = 0; i < 7; i++) {
-    const candidate = getKstDate(i);
+  for (const candidate of candidates) {
+    // Check cache
     if (kosdaqCache[candidate] && Date.now() - kosdaqCache[candidate].timestamp < 10 * 60 * 1000) {
       return { data: kosdaqCache[candidate].data, isDemo: false };
     }
 
     try {
       const res = await fetch(`${KRX_KOSDAQ_INDEX_URL}?basDd=${candidate}`, {
-        headers: { AUTH_KEY: apiKey, Accept: 'application/json' },
+        method: 'GET',
+        headers: {
+          AUTH_KEY: apiKey,
+          Accept: 'application/json',
+        },
       });
-      if (res.ok) {
-        const json: any = await res.json();
-        if (json && Array.isArray(json.OutBlock_1) && json.OutBlock_1.length > 0) {
-          const item =
-            json.OutBlock_1.find((it: any) => it.IDX_NM === '코스닥') ||
-            json.OutBlock_1.find((it: any) => it.IDX_NM?.trim() === '코스닥') ||
-            json.OutBlock_1.find((it: any) => it.IDX_NM?.includes('코스닥') && !it.IDX_NM?.includes('150')) ||
-            json.OutBlock_1[0];
 
-          const closeVal = safeNumber(item.CLSPRC_IDX);
-          if (closeVal > 0) {
-            const openVal = safeNumber(item.OPNPRC_IDX) || closeVal;
-            const highVal = safeNumber(item.HGPRC_IDX) || closeVal;
-            const lowVal = safeNumber(item.LWPRC_IDX) || closeVal;
-            const changeVal = safeNumber(item.CMPPREVDD_IDX);
-            let rateVal = safeNumber(item.FLUC_RT);
-            if (changeVal < 0 && rateVal > 0) rateVal = -rateVal;
+      if (!res.ok) {
+        const errorBody = await res.text();
 
-            const parsed = {
-              code: 'KOSDAQ',
-              name: '코스닥',
-              market: 'KR',
-              value: closeVal,
-              change: changeVal,
-              changeRate: rateVal,
-              open: openVal,
-              high: highVal,
-              low: lowVal,
-              date: formatKrxDateDisplay(item.BAS_DD || candidate),
-              rawDate: item.BAS_DD || candidate,
-              source: 'KRX',
-              isDemo: false,
-              history: [openVal, lowVal, highVal, closeVal],
-            };
-            kosdaqCache[candidate] = { date: candidate, data: parsed, timestamp: Date.now() };
-            return { data: parsed, isDemo: false };
-          }
-        }
+        console.error('[KOSDAQ Index] KRX error', {
+          date: candidate,
+          status: res.status,
+          statusText: res.statusText,
+          bodyPreview: errorBody.slice(0, 300),
+        });
+
+        continue;
       }
-    } catch {
-      // Continue backwards
+
+      const json: any = await res.json();
+      const hasOutBlock1 = Boolean(json && (json.OutBlock_1 || json.outBlock_1 || json.output));
+      const rows = extractKrxRows(json);
+      const rowCount = rows.length;
+      const first10IdxNames = rows.slice(0, 10).map((r: any) => String(r.IDX_NM || ''));
+
+      const selectedItem = selectKosdaqRepresentative(rows);
+      const selectedIdxName = selectedItem?.IDX_NM || 'none';
+      const clsprcIdx = selectedItem ? safeNumber(selectedItem.CLSPRC_IDX) : 0;
+
+      // Diagnostic logging (date, status, statusText, OutBlock_1 exists, row count, first 10 names, selected IDX_NM, CLSPRC_IDX)
+      console.log('[KOSDAQ Index] Diagnostic info:', {
+        date: candidate,
+        status: res.status,
+        statusText: res.statusText,
+        hasOutBlock1,
+        rowCount,
+        first10IdxNames,
+        selectedIdxName,
+        clsprcIdx,
+      });
+
+      if (!selectedItem || clsprcIdx <= 0) {
+        continue;
+      }
+
+      // Mapping:
+      // CLSPRC_IDX -> value
+      // CMPPREVDD_IDX -> change
+      // FLUC_RT -> changeRate
+      // BAS_DD -> date
+      const openVal = safeNumber(selectedItem.OPNPRC_IDX) || clsprcIdx;
+      const highVal = safeNumber(selectedItem.HGPRC_IDX) || clsprcIdx;
+      const lowVal = safeNumber(selectedItem.LWPRC_IDX) || clsprcIdx;
+      const changeVal = safeNumber(selectedItem.CMPPREVDD_IDX);
+      let rateVal = safeNumber(selectedItem.FLUC_RT);
+      if (changeVal < 0 && rateVal > 0) rateVal = -rateVal;
+      if (changeVal > 0 && rateVal < 0) rateVal = Math.abs(rateVal);
+
+      const parsed = {
+        code: 'KOSDAQ',
+        name: '코스닥',
+        market: 'KR',
+        value: clsprcIdx,
+        change: changeVal,
+        changeRate: rateVal,
+        open: openVal,
+        high: highVal,
+        low: lowVal,
+        date: formatKrxDateDisplay(selectedItem.BAS_DD || candidate),
+        rawDate: selectedItem.BAS_DD || candidate,
+        source: 'KRX',
+        isDemo: false,
+        history: [openVal, lowVal, highVal, clsprcIdx],
+      };
+
+      kosdaqCache[candidate] = { date: candidate, data: parsed, timestamp: Date.now() };
+      return { data: parsed, isDemo: false };
+    } catch (error) {
+      console.error('[KOSDAQ Index] request failed', {
+        date: candidate,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      continue;
     }
   }
 
-  return { data: DEFAULT_DEMO_KOSDAQ, isDemo: true };
+  // Fallback to DEMO if all requests fail
+  return { data: { ...DEFAULT_DEMO_KOSDAQ, source: 'DEMO', isDemo: true }, isDemo: true };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
